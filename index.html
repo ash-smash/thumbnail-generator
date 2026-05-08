@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Builder Studio — Thumbnail Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --surface2: #18181f;
+      --border: rgba(255,255,255,0.08);
+      --border-active: rgba(255,255,255,0.2);
+      --text: #f0f0f5;
+      --text-muted: #666680;
+      --accent: #7c6dfa;
+      --accent2: #fa6d9a;
+      --accent3: #6dfad4;
+      --glow: rgba(124,109,250,0.25);
+    }
+
+    html { font-size: 16px; scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── GRID BG ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(124,109,250,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(124,109,250,0.03) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── HEADER ── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(10,10,15,0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 1.1rem;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .logo-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+    }
+    .header-badge {
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 100px;
+      background: rgba(124,109,250,0.15);
+      color: var(--accent);
+      border: 1px solid rgba(124,109,250,0.3);
+      font-weight: 500;
+    }
+
+    /* ── LAYOUT ── */
+    .app {
+      position: relative;
+      z-index: 1;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    @media (max-width: 900px) {
+      .app { grid-template-columns: 1fr; }
+    }
+
+    /* ── HERO TEXT ── */
+    .hero {
+      grid-column: 1 / -1;
+      padding: 3rem 0 1.5rem;
+    }
+    .hero h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, var(--text) 0%, rgba(240,240,245,0.5) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero p {
+      margin-top: 0.75rem;
+      color: var(--text-muted);
+      font-size: 1rem;
+      max-width: 500px;
+      line-height: 1.6;
+    }
+
+    /* ── PANEL ── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .panel-header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 0.78rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .panel-header svg { opacity: 0.6; }
+    .panel-body { padding: 1.25rem; }
+
+    /* ── FORM ── */
+    .field { margin-bottom: 1.25rem; }
+    label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+    input[type="text"], textarea, select {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      padding: 0.65rem 0.9rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      resize: none;
+    }
+    input[type="text"]:focus, textarea:focus, select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--glow);
+    }
+    select option { background: #18181f; }
+    textarea { height: 80px; }
+
+    /* ── PLATFORM PICKER ── */
+    .platform-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.5rem;
+    }
+    .platform-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.6rem 0.4rem;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+      font-family: 'DM Sans', sans-serif;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    .platform-btn:hover { border-color: var(--border-active); color: var(--text); }
+    .platform-btn.active {
+      border-color: var(--accent);
+      background: rgba(124,109,250,0.12);
+      color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(124,109,250,0.2);
+    }
+    .platform-btn .icon { font-size: 1.3rem; display: block; margin-bottom: 3px; }
+
+    /* ── STYLE PICKER ── */
+    .style-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+    .style-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.75rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      background: var(--surface2);
+    }
+    .style-card:hover { border-color: var(--border-active); }
+    .style-card.active {
+      border-color: var(--accent);
+      background: rgba(124,109,250,0.1);
+    }
+    .style-card .swatch {
+      width: 100%;
+      height: 36px;
+      border-radius: 6px;
+      margin-bottom: 0.4rem;
+    }
+    .style-card .style-name {
+      font-size: 0.75rem;
+      font-weight: 600;
+      font-family: 'Syne', sans-serif;
+    }
+
+    /* ── COLORS ── */
+    .color-row {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .color-swatch {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform 0.1s, border-color 0.1s;
+    }
+    .color-swatch:hover { transform: scale(1.15); }
+    .color-swatch.active { border-color: white; transform: scale(1.15); }
+
+    /* ── GENERATE BUTTON ── */
+    .generate-btn {
+      width: 100%;
+      padding: 0.9rem;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(135deg, var(--accent), #5b4fd6);
+      color: white;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 0.95rem;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s, box-shadow 0.2s;
+      box-shadow: 0 4px 20px rgba(124,109,250,0.3);
+      margin-top: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+    .generate-btn:hover { opacity: 0.9; box-shadow: 0 6px 28px rgba(124,109,250,0.45); }
+    .generate-btn:active { transform: scale(0.98); }
+    .generate-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* ── CANVAS AREA ── */
+    .canvas-panel {
+      position: sticky;
+      top: 76px;
+    }
+    .canvas-wrap {
+      background: #0d0d12;
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 300px;
+      position: relative;
+    }
+    #thumbCanvas {
+      max-width: 100%;
+      display: block;
+      border-radius: 8px;
+    }
+    .canvas-empty {
+      text-align: center;
+      padding: 3rem 2rem;
+      color: var(--text-muted);
+    }
+    .canvas-empty .empty-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      display: block;
+      opacity: 0.4;
+    }
+
+    /* ── LOADING ── */
+    .spinner {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(10,10,15,0.8);
+      backdrop-filter: blur(4px);
+      border-radius: 12px;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .spinner.visible { display: flex; }
+    .spin-ring {
+      width: 48px; height: 48px;
+      border: 3px solid rgba(124,109,250,0.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner p { font-size: 0.85rem; color: var(--text-muted); }
+
+    /* ── ACTIONS ── */
+    .thumb-actions {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+    .action-btn {
+      flex: 1;
+      padding: 0.6rem;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+    }
+    .action-btn:hover { border-color: var(--border-active); background: var(--surface); }
+    .action-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    /* ── DIMENSIONS BADGE ── */
+    .dim-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.72rem;
+      padding: 4px 10px;
+      border-radius: 100px;
+      background: rgba(255,255,255,0.05);
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      margin-left: auto;
+    }
+
+    /* ── DIVIDER ── */
+    .divider { height: 1px; background: var(--border); margin: 1rem 0; }
+
+    /* ── FOOTER ── */
+    footer {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── RANGE ── */
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 4px;
+      border-radius: 4px;
+      background: var(--surface2);
+      outline: none;
+      border: 1px solid var(--border);
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      box-shadow: 0 0 0 3px rgba(124,109,250,0.2);
+    }
+
+    /* ── HISTORY STRIP ── */
+    .history-strip {
+      grid-column: 1 / -1;
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .history-thumb {
+      width: 100px;
+      height: 58px;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: border-color 0.15s, transform 0.1s;
+      opacity: 0.7;
+      flex-shrink: 0;
+    }
+    .history-thumb:hover { border-color: var(--border-active); opacity: 1; transform: scale(1.03); }
+    .history-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+    .section-title {
+      grid-column: 1 / -1;
+      font-family: 'Syne', sans-serif;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    Builder Studio
+  </div>
+  <div class="header-badge">Thumbnail Generator</div>
+</header>
+
+<main class="app">
+  <div class="hero">
+    <h1>Create thumbnails<br>for every platform</h1>
+    <p>Design eye-catching thumbnails for YouTube, Instagram, TikTok, Twitter, and more — rendered instantly on canvas.</p>
+  </div>
+
+  <!-- LEFT PANEL: Controls -->
+  <div>
+    <div class="panel">
+      <div class="panel-header">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+        Configuration
+      </div>
+      <div class="panel-body">
+
+        <div class="field">
+          <label>Platform</label>
+          <div class="platform-grid" id="platformGrid">
+            <button class="platform-btn active" data-platform="youtube" data-w="1280" data-h="720">
+              <span class="icon">▶️</span>YouTube
+            </button>
+            <button class="platform-btn" data-platform="instagram" data-w="1080" data-h="1080">
+              <span class="icon">📷</span>Instagram
+            </button>
+            <button class="platform-btn" data-platform="tiktok" data-w="1080" data-h="1920">
+              <span class="icon">🎵</span>TikTok
+            </button>
+            <button class="platform-btn" data-platform="twitter" data-w="1200" data-h="675">
+              <span class="icon">🐦</span>Twitter/X
+            </button>
+            <button class="platform-btn" data-platform="linkedin" data-w="1200" data-h="627">
+              <span class="icon">💼</span>LinkedIn
+            </button>
+            <button class="platform-btn" data-platform="og" data-w="1200" data-h="630">
+              <span class="icon">🌐</span>OG Image
+            </button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Title Text</label>
+          <input type="text" id="titleInput" placeholder="Your main headline..." value="10 Things Nobody Tells You About React" />
+        </div>
+
+        <div class="field">
+          <label>Subtitle / Tagline</label>
+          <input type="text" id="subtitleInput" placeholder="Optional subtitle..." value="A deep dive for developers" />
+        </div>
+
+        <div class="field">
+          <label>Style</label>
+          <div class="style-grid" id="styleGrid">
+            <div class="style-card active" data-style="gradient">
+              <div class="swatch" style="background: linear-gradient(135deg,#7c6dfa,#fa6d9a)"></div>
+              <div class="style-name">Gradient</div>
+            </div>
+            <div class="style-card" data-style="dark">
+              <div class="swatch" style="background: linear-gradient(135deg,#1a1a2e,#0d0d1a)"></div>
+              <div class="style-name">Dark</div>
+            </div>
+            <div class="style-card" data-style="neon">
+              <div class="swatch" style="background: #0a0a0f; border: 1px solid rgba(110,220,255,0.3)"></div>
+              <div class="style-name">Neon</div>
+            </div>
+            <div class="style-card" data-style="minimal">
+              <div class="swatch" style="background: #f5f5f0; border: 1px solid #ddd;"></div>
+              <div class="style-name">Minimal</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Accent Color</label>
+          <div class="color-row" id="colorRow">
+            <div class="color-swatch active" data-color="#7c6dfa" style="background:#7c6dfa"></div>
+            <div class="color-swatch" data-color="#fa6d9a" style="background:#fa6d9a"></div>
+            <div class="color-swatch" data-color="#6dfad4" style="background:#6dfad4"></div>
+            <div class="color-swatch" data-color="#facc6d" style="background:#facc6d"></div>
+            <div class="color-swatch" data-color="#f87171" style="background:#f87171"></div>
+            <div class="color-swatch" data-color="#60a5fa" style="background:#60a5fa"></div>
+            <div class="color-swatch" data-color="#34d399" style="background:#34d399"></div>
+            <div class="color-swatch" data-color="#f97316" style="background:#f97316"></div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Emoji / Icon <span style="opacity:0.5; text-transform:none; letter-spacing:0; font-weight:400">(optional)</span></label>
+          <input type="text" id="emojiInput" placeholder="🚀" style="font-size:1.2rem" maxlength="4" value="⚛️" />
+        </div>
+
+        <div class="field">
+          <label>Font Size <span id="fontSizeVal" style="color:var(--text); text-transform:none; letter-spacing:0">54</span></label>
+          <input type="range" id="fontSizeRange" min="24" max="96" value="54" />
+        </div>
+
+        <button class="generate-btn" id="generateBtn" onclick="generateThumbnail()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Generate Thumbnail
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Preview -->
+  <div class="canvas-panel">
+    <div class="panel">
+      <div class="panel-header">
+        Preview
+        <div class="dim-badge" id="dimBadge">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+          1280 × 720
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="canvas-wrap" id="canvasWrap">
+          <div class="canvas-empty" id="emptyState">
+            <span class="empty-icon">🖼️</span>
+            <p>Configure your thumbnail<br>and click Generate</p>
+          </div>
+          <canvas id="thumbCanvas" style="display:none"></canvas>
+          <div class="spinner" id="spinner">
+            <div class="spin-ring"></div>
+            <p>Rendering…</p>
+          </div>
+        </div>
+
+        <div class="thumb-actions">
+          <button class="action-btn" id="copyBtn" onclick="copyToClipboard()" disabled>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+            Copy
+          </button>
+          <button class="action-btn" id="downloadBtn" onclick="downloadThumbnail()" disabled>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download
+          </button>
+          <button class="action-btn" onclick="regenerate()" id="regenBtn" disabled>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+            Variation
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:1rem" id="historySection" style="display:none">
+      <p class="section-title">Recent</p>
+      <div class="history-strip" id="historyStrip"></div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  Built with Builder Studio &mdash; Canvas-powered thumbnail generation
+</footer>
+
+<script>
+// ── State ──
+let state = {
+  platform: { name:'youtube', w:1280, h:720 },
+  style: 'gradient',
+  accent: '#7c6dfa',
+  fontSize: 54,
+  variation: 0,
+};
+const history = [];
+
+// ── Platform ──
+document.querySelectorAll('.platform-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.platform-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.platform = { name: btn.dataset.platform, w: +btn.dataset.w, h: +btn.dataset.h };
+    document.getElementById('dimBadge').innerHTML = `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg> ${state.platform.w} × ${state.platform.h}`;
+  });
+});
+
+// ── Style ──
+document.querySelectorAll('.style-card').forEach(card => {
+  card.addEventListener('click', () => {
+    document.querySelectorAll('.style-card').forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+    state.style = card.dataset.style;
+  });
+});
+
+// ── Color ──
+document.querySelectorAll('.color-swatch').forEach(sw => {
+  sw.addEventListener('click', () => {
+    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+    sw.classList.add('active');
+    state.accent = sw.dataset.color;
+  });
+});
+
+// ── Font size ──
+const fsRange = document.getElementById('fontSizeRange');
+const fsVal = document.getElementById('fontSizeVal');
+fsRange.addEventListener('input', () => {
+  state.fontSize = +fsRange.value;
+  fsVal.textContent = fsRange.value;
+});
+
+// ── Helpers ──
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return {r,g,b};
+}
+
+function lighten(hex, amount=80) {
+  let {r,g,b} = hexToRgb(hex);
+  return `rgb(${Math.min(255,r+amount)},${Math.min(255,g+amount)},${Math.min(255,b+amount)})`;
+}
+
+function darken(hex, amount=60) {
+  let {r,g,b} = hexToRgb(hex);
+  return `rgb(${Math.max(0,r-amount)},${Math.max(0,g-amount)},${Math.max(0,b-amount)})`;
+}
+
+function accentAlpha(hex, a=0.15) {
+  let {r,g,b} = hexToRgb(hex);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+// ── Wrap text ──
+function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+  const words = text.split(' ');
+  let line = '';
+  const lines = [];
+  for (const word of words) {
+    const testLine = line + word + ' ';
+    const metrics = ctx.measureText(testLine);
+    if (metrics.width > maxWidth && line !== '') {
+      lines.push(line.trim());
+      line = word + ' ';
+    } else {
+      line = testLine;
+    }
+  }
+  lines.push(line.trim());
+  return lines;
+}
+
+// ── Draw Thumbnail ──
+function drawThumbnail(canvas, opts) {
+  const { w, h, title, subtitle, emoji, style, accent, fontSize, variation } = opts;
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  const pad = w * 0.07;
+  const {r:ar, g:ag, b:ab} = hexToRgb(accent);
+
+  // Clear
+  ctx.clearRect(0, 0, w, h);
+
+  const styles = {
+    gradient: () => {
+      // Background
+      const grd = ctx.createLinearGradient(0, 0, w, h);
+      if (variation % 3 === 0) {
+        grd.addColorStop(0, darken(accent, 80));
+        grd.addColorStop(0.5, darken(accent, 40));
+        grd.addColorStop(1, '#0a0020');
+      } else if (variation % 3 === 1) {
+        grd.addColorStop(0, '#0d0d1a');
+        grd.addColorStop(1, darken(accent, 30));
+      } else {
+        grd.addColorStop(0, '#1a0a2e');
+        grd.addColorStop(0.7, darken(accent, 60));
+        grd.addColorStop(1, '#0a0a15');
+      }
+      ctx.fillStyle = grd;
+      ctx.fillRect(0, 0, w, h);
+
+      // Orb glow
+      const orbX = variation % 2 === 0 ? w * 0.75 : w * 0.25;
+      const orbGrd = ctx.createRadialGradient(orbX, h * 0.4, 0, orbX, h * 0.4, w * 0.45);
+      orbGrd.addColorStop(0, `rgba(${ar},${ag},${ab},0.35)`);
+      orbGrd.addColorStop(1, 'transparent');
+      ctx.fillStyle = orbGrd;
+      ctx.fillRect(0, 0, w, h);
+
+      return { textColor: '#ffffff', subColor: `rgba(255,255,255,0.7)` };
+    },
+    dark: () => {
+      ctx.fillStyle = '#080810';
+      ctx.fillRect(0, 0, w, h);
+
+      // Subtle grid
+      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+      ctx.lineWidth = 1;
+      const gridSize = w / 16;
+      for (let x = 0; x <= w; x += gridSize) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+      for (let y = 0; y <= h; y += gridSize) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+
+      // Accent line top
+      const lineGrd = ctx.createLinearGradient(0, 0, w, 0);
+      lineGrd.addColorStop(0, 'transparent');
+      lineGrd.addColorStop(0.3, accent);
+      lineGrd.addColorStop(0.7, accent);
+      lineGrd.addColorStop(1, 'transparent');
+      ctx.strokeStyle = lineGrd;
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(0, 4); ctx.lineTo(w, 4); ctx.stroke();
+
+      return { textColor: '#f0f0f5', subColor: `rgba(${ar},${ag},${ab},0.9)` };
+    },
+    neon: () => {
+      ctx.fillStyle = '#050508';
+      ctx.fillRect(0, 0, w, h);
+
+      // Scanlines
+      for (let y = 0; y < h; y += 4) {
+        ctx.fillStyle = 'rgba(255,255,255,0.015)';
+        ctx.fillRect(0, y, w, 2);
+      }
+
+      // Neon glow pools
+      const g1 = ctx.createRadialGradient(w*0.2, h*0.3, 0, w*0.2, h*0.3, w*0.4);
+      g1.addColorStop(0, `rgba(${ar},${ag},${ab},0.2)`);
+      g1.addColorStop(1, 'transparent');
+      ctx.fillStyle = g1;
+      ctx.fillRect(0, 0, w, h);
+
+      const g2 = ctx.createRadialGradient(w*0.8, h*0.7, 0, w*0.8, h*0.7, w*0.3);
+      g2.addColorStop(0, `rgba(110,220,255,0.15)`);
+      g2.addColorStop(1, 'transparent');
+      ctx.fillStyle = g2;
+      ctx.fillRect(0, 0, w, h);
+
+      return { textColor: accent, subColor: 'rgba(110,220,255,0.9)' };
+    },
+    minimal: () => {
+      ctx.fillStyle = '#f8f8f3';
+      ctx.fillRect(0, 0, w, h);
+
+      // Accent bar left
+      ctx.fillStyle = accent;
+      ctx.fillRect(0, 0, 8, h);
+
+      // Subtle corner decoration
+      ctx.fillStyle = accentAlpha(accent, 0.08);
+      ctx.fillRect(w - w*0.3, 0, w*0.3, h);
+
+      return { textColor: '#1a1a2e', subColor: `rgba(${ar},${ag},${ab},1)` };
+    }
+  };
+
+  const theme = (styles[style] || styles.gradient)();
+
+  // ── Text Layout ──
+  const maxTextW = w * 0.76;
+  const titleFontSize = Math.round(fontSize * (w / 800));
+  const subtitleFontSize = Math.round(titleFontSize * 0.42);
+  const emojiSize = Math.round(titleFontSize * 0.9);
+
+  // Emoji
+  if (emoji) {
+    ctx.font = `${emojiSize}px serif`;
+    ctx.textBaseline = 'middle';
+    const emojiY = h * 0.32;
+    ctx.fillText(emoji, pad, emojiY);
+  }
+
+  // Title
+  ctx.font = `800 ${titleFontSize}px 'Syne', sans-serif`;
+  ctx.fillStyle = theme.textColor;
+  ctx.textBaseline = 'alphabetic';
+
+  const titleLines = wrapText(ctx, title || 'Your Title Here', 0, 0, maxTextW, titleFontSize * 1.25);
+  const titleStartY = emoji ? h * 0.46 : h * 0.42;
+  const lineH = titleFontSize * 1.2;
+
+  // Text shadow / glow for dark themes
+  if (style !== 'minimal') {
+    ctx.shadowColor = `rgba(${ar},${ag},${ab},0.5)`;
+    ctx.shadowBlur = 30;
+  }
+
+  titleLines.forEach((line, i) => {
+    ctx.fillStyle = theme.textColor;
+    ctx.fillText(line, pad, titleStartY + i * lineH);
+  });
+  ctx.shadowBlur = 0;
+
+  // Subtitle
+  if (subtitle) {
+    const subY = titleStartY + titleLines.length * lineH + titleFontSize * 0.5;
+    ctx.font = `400 ${subtitleFontSize}px 'DM Sans', sans-serif`;
+    ctx.fillStyle = theme.subColor;
+    ctx.fillText(subtitle, pad, subY);
+  }
+
+  // ── Accent decoration ──
+  if (style === 'gradient' || style === 'dark') {
+    // Bottom accent strip
+    const stripGrd = ctx.createLinearGradient(0, 0, w * 0.5, 0);
+    stripGrd.addColorStop(0, accent);
+    stripGrd.addColorStop(1, 'transparent');
+    ctx.fillStyle = stripGrd;
+    ctx.fillRect(pad, h - 6, w * 0.35, 4);
+  }
+
+  if (style === 'neon') {
+    // Neon border glow
+    ctx.strokeStyle = `rgba(${ar},${ag},${ab},0.6)`;
+    ctx.lineWidth = 2;
+    ctx.shadowColor = accent;
+    ctx.shadowBlur = 12;
+    ctx.strokeRect(16, 16, w - 32, h - 32);
+    ctx.shadowBlur = 0;
+  }
+}
+
+// ── Generate ──
+function generateThumbnail() {
+  const title = document.getElementById('titleInput').value || 'Your Title';
+  const subtitle = document.getElementById('subtitleInput').value;
+  const emoji = document.getElementById('emojiInput').value.trim();
+
+  const spinner = document.getElementById('spinner');
+  const canvas = document.getElementById('thumbCanvas');
+  const emptyState = document.getElementById('emptyState');
+
+  spinner.classList.add('visible');
+
+  setTimeout(() => {
+    emptyState.style.display = 'none';
+    canvas.style.display = 'block';
+
+    drawThumbnail(canvas, {
+      w: state.platform.w,
+      h: state.platform.h,
+      title, subtitle, emoji,
+      style: state.style,
+      accent: state.accent,
+      fontSize: state.fontSize,
+      variation: state.variation,
+    });
+
+    spinner.classList.remove('visible');
+
+    // Enable buttons
+    document.getElementById('downloadBtn').disabled = false;
+    document.getElementById('copyBtn').disabled = false;
+    document.getElementById('regenBtn').disabled = false;
+
+    // Add to history
+    const histCanvas = document.createElement('canvas');
+    drawThumbnail(histCanvas, {
+      w: 200, h: 112,
+      title, subtitle, emoji,
+      style: state.style,
+      accent: state.accent,
+      fontSize: state.fontSize,
+      variation: state.variation,
+    });
+    addToHistory(histCanvas.toDataURL(), { title, subtitle, emoji, platform: state.platform, style: state.style, accent: state.accent, fontSize: state.fontSize, variation: state.variation });
+  }, 300);
+}
+
+function regenerate() {
+  state.variation = (state.variation + 1) % 6;
+  generateThumbnail();
+}
+
+function addToHistory(dataUrl, opts) {
+  history.unshift({ dataUrl, opts });
+  if (history.length > 8) history.pop();
+
+  const strip = document.getElementById('historyStrip');
+  const section = document.getElementById('historySection');
+  section.style.display = 'block';
+  strip.innerHTML = '';
+  history.forEach((item, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'history-thumb';
+    const img = document.createElement('img');
+    img.src = item.dataUrl;
+    img.title = item.opts.title;
+    wrap.appendChild(img);
+    wrap.addEventListener('click', () => {
+      const canvas = document.getElementById('thumbCanvas');
+      drawThumbnail(canvas, {
+        w: item.opts.platform.w, h: item.opts.platform.h,
+        ...item.opts
+      });
+    });
+    strip.appendChild(wrap);
+  });
+}
+
+// ── Download ──
+function downloadThumbnail() {
+  const canvas = document.getElementById('thumbCanvas');
+  const platform = document.querySelector('.platform-btn.active').dataset.platform;
+  const link = document.createElement('a');
+  link.download = `thumbnail-${platform}-${Date.now()}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}
+
+// ── Copy to Clipboard ──
+async function copyToClipboard() {
+  const canvas = document.getElementById('thumbCanvas');
+  canvas.toBlob(async (blob) => {
+    try {
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      const btn = document.getElementById('copyBtn');
+      const orig = btn.innerHTML;
+      btn.innerHTML = '✓ Copied!';
+      setTimeout(() => { btn.innerHTML = orig; }, 2000);
+    } catch(e) {
+      alert('Copy not supported in this browser. Use Download instead.');
+    }
+  });
+}
+
+// Auto-generate on load
+window.addEventListener('load', () => {
+  setTimeout(generateThumbnail, 600);
+});
+</script>
+</body>
+</html>
